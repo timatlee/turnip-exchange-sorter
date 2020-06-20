@@ -6,7 +6,6 @@
 // @author       Tim AtLee
 // @match        https://turnip.exchange/islands
 // @resource     cssjqui https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css
-// @resource     csscustom https://raw.githubusercontent.com/timatlee/turnip-exchange-sorter/master/Turnip%20Exchange%20Sorter.css
 // @require      https://code.jquery.com/jquery-3.5.1.min.js
 // @require      https://code.jquery.com/ui/1.12.1/jquery-ui.min.js
 // @run-at       document-end
@@ -15,54 +14,41 @@
 // ==/UserScript==
 
 let HTMLDialog = `
-<div id="dialog" title="Basic dialog">
-  <p>This is the default dialog which is useful for displaying information. The dialog window can be moved, resized and closed with the 'x' icon.</p>
+<div id="dialog" title="Turnip Filters">
+  <p><label for="price_min">Low Price:</label><input type="number" id="price_min" class="text ui-widget-content ui-corner-all" name="price_min"/></p>
 </div>
 `;
 
-var jqUI_CssSrc = GM_getResourceText ("cssjqui");
-GM_addStyle (jqUI_CssSrc);
+var jqUI_CssSrc = GM_getResourceText("cssjqui");
+GM_addStyle(jqUI_CssSrc);
 
-function parseCards() {
-
-}
-
-
+let bells_regexp = new RegExp(/(\d{2,3}) Bells/);
+let queue_regexp = new RegExp(/Waiting: (\d{1,3})\/(\d{1,3})/);
 
 (function() {
     'use strict';
 
-    let bells_regexp = new RegExp(/(\d{2,3}) Bells/);
-    let queue_regexp = new RegExp(/Waiting: (\d{1,3})\/(\d{1,3})/);
-
     console.log("Hello.  Starting Turnip Exchange Sorter");
     console.log("jQuery version I think loaded: ", $().jquery);
 
-    let ifReplaced = false;
-    // Periodically check the page for cards.
-    let checker = setInterval(() => {
-        // If we have found cards, stop polling the page.
-        if (ifReplaced) {
-            clearInterval(checker);
-            return;
-        }
+    // parseCards needs to be in the global space so we can call it from button presses.
+    // Sorts and applies filters to the cards.
+    unsafeWindow.parseCards = function() {
         // Try to find price cards
         let cards = $("div[data-turnip-code]");
         // If we have cards on the screen..
         if (cards.length > 3) {
-            // Show the dialog box
-            $("body").append(HTMLDialog);
-            $( "#dialog" ).dialog({
-                position: { my: "left", at: "left top", of: "#app" }
-            });
-
-            // We can start to do work. First, stop checking.
-            ifReplaced = true;
+            // Get a filter price.
+            const price_min = localStorage.getItem('price_min');
+            if (!price_min) {
+                localStorage.setItem('price_min', 300);
+                $("#price_min").val(300);
+            } else {
+                $("#price_min").val(price_min);
+            }
 
             // Iterate over the cards
             cards.each(function() {
-                // $(this) is an individual card.
-
                 // Try to find the price node
                 let PriceNode = $(this).find("div > p").filter(function() {
                     return $(this).text().match(bells_regexp);
@@ -73,6 +59,9 @@ function parseCards() {
                     return $(this).text().match(queue_regexp);
                 });
 
+                // Add an element to hide this card.
+                //QueueNode.before("<a class=\"removecard\" href=\"https://www.google.ca\">Remove</a>");
+
                 // Parse up all the data, and append it to the DOM.
                 let price = parseInt(PriceNode.text().match(bells_regexp)[1]);
                 let queue_now = parseInt(QueueNode.text().match(queue_regexp)[1]);
@@ -81,7 +70,14 @@ function parseCards() {
                 $(this).attr('data-price', price);
                 $(this).attr('data-queue', (queue_now/queue_max));
 
+                // Show all the elements first, then hide if they don't meet criteria.
+                $(this).show();
+                if (price <= price_min) {
+                    $(this).hide();
+                }
             });
+        } else {
+            return false;
         }
 
         // Sort the cards by price.
@@ -91,7 +87,58 @@ function parseCards() {
             return (contentA < contentB) ? 1 : (contentA > contentB) ? -1 : 0;
         }).appendTo(cards.parent());
 
+        return true;
+    } // end parseCards
 
+    // Handles unhiding cards we've hidden.
+    unsafeWindow.unHideCards = function() {
+        localStorage.removeItem("hidden_cards");
+    } // end unHideCards
 
+    let ifReplaced = false;
+    // Periodically check the page for cards.
+    let checker = setInterval(() => {
+        // If we have found cards, stop polling the page.
+        if (ifReplaced) {
+            clearInterval(checker);
+            return;
+        }
+
+        // If this returns true, then there are cards and we can make things change on screen.
+        if (parseCards()) {
+            ifReplaced = true
+
+            // Add the dialog box to the DOM.  Do this early so we can prefill some values.
+            $("body").append(HTMLDialog);
+
+            // Get the saved price from local storage, and apply it to the dialog box.
+            const price_min = localStorage.getItem('price_min');
+            if (!price_min) {
+                localStorage.setItem('price_min', 300);
+                $("#price_min").val(300);
+            } else {
+                $("#price_min").val(price_min);
+            }
+
+            // Show the dialog
+            $( "#dialog" ).dialog({
+                position: { my: "left", at: "left top", of: "#app" },
+                buttons: {
+                    //"Unhide Cards": unHideCards,
+                    "Apply Filter": parseCards,
+
+                },
+            });
+
+            // Change handler for minimum price.
+            $("#price_min").change(function() {
+                localStorage.setItem("price_min",$(this).val());
+            });
+
+            $("#removecard").click(function(){
+                event.stopPropagation();
+                console.log("Hello.");
+            });
+        } // end of if(parseCards)
     }, 1000);
 })();
