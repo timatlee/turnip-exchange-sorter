@@ -6,6 +6,8 @@
 // @author       Tim AtLee
 // @match        https://turnip.exchange/islands
 // @require      https://code.jquery.com/jquery-3.5.1.min.js
+// @require      https://code.jquery.com/ui/1.12.1/jquery-ui.min.js
+// @resource     https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css
 // @run-at       document-end
 // ==/UserScript==
 
