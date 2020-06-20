@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Turnip Exchange Sorter
 // @namespace    com.timatlee.turnip.exchange.filter
-// @version      0.0.1
+// @version      0.0.2
 // @description  Sorts the Turnip Exchange by sale price (and queue length?)
 // @author       Tim AtLee
 // @match        https://turnip.exchange/islands
