@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Turnip Exchange Sorter
 // @namespace    com.timatlee.turnip.exchange.filter
-// @version      0.0.2
+// @version      0.0.3
 // @description  Sorts the Turnip Exchange by sale price (and queue length?)
 // @author       Tim AtLee
-// @match        https://turnip.exchange/islands
+// @match        https://turnip.exchange/island*
 // @resource     cssjqui https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css
 // @require      https://code.jquery.com/jquery-3.5.1.min.js
 // @require      https://code.jquery.com/ui/1.12.1/jquery-ui.min.js
@@ -24,12 +24,34 @@ GM_addStyle(jqUI_CssSrc);
 
 let bells_regexp = new RegExp(/(\d{2,3}) Bells/);
 let queue_regexp = new RegExp(/Waiting: (\d{1,3})\/(\d{1,3})/);
+let title_regexp = new RegExp(/You are \#(\d{1,3}) of (\d{1,3}) in the queue\./); //You are #81 of 126 in the queue.
 
 (function() {
     'use strict';
 
     console.log("Hello.  Starting Turnip Exchange Sorter");
     console.log("jQuery version I think loaded: ", $().jquery);
+
+    if (/island\/\w*/.test(location.pathname)) {
+        // We're on an island.
+        console.log("On an island.");
+        let ifQueueSize = false;
+        let queueChecker = setInterval(() => {
+            /*
+            if (ifQueueSize) {
+                clearInterval(queueChecker);
+                return;
+            }
+            */
+            let queue_length = $("span.text-center").text().match(title_regexp);
+            if (queue_length !== null) {
+                // console.log(queue_length);
+                ifQueueSize = true;
+                let newtitle = queue_length[1] + "/" + queue_length[2];
+                $(document).attr('title', newtitle);
+            }
+        }, 1000);
+    }
 
     // parseCards needs to be in the global space so we can call it from button presses.
     // Sorts and applies filters to the cards.
